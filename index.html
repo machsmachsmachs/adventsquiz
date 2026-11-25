@@ -34,15 +34,24 @@ h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing
 .door.nudge{animation:nudge .35s}
 @keyframes nudge{30%{transform:translateX(-3px)}70%{transform:translateX(3px)}}
 .sentence{margin-top:clamp(44px,8vw,72px)}
+.pool-l{margin:0 0 10px;text-align:center;font-size:14px;color:var(--faint)}
+.pool{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;min-height:56px;padding:10px;border:1.5px dashed var(--light);margin-bottom:clamp(28px,5vw,40px)}
+.pool.over{border-color:var(--mid);background:rgba(255,255,255,.6)}
+.pool .empty{align-self:center;color:var(--light);font-size:15px}
 .words{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 22px}
 .word{display:flex;gap:6px}
-.cell{display:flex;flex-direction:column;align-items:center;gap:4px}
-.cell input{width:clamp(28px,7vw,36px);height:clamp(36px,9vw,44px);border:0;border-bottom:1.5px solid var(--mid);background:transparent;text-align:center;font:400 20px Jost,sans-serif;color:var(--ink);text-transform:uppercase;padding:0;border-radius:0}
-.cell input:focus{outline:none;border-bottom-color:var(--red)}
-.cell input.wrong{color:var(--red);border-bottom-color:var(--red)}
-.cell input.new{animation:glow 1.8s ease-out}
-@keyframes glow{0%,35%{color:var(--red);border-bottom-color:var(--red)}}
-.cell small{font-size:13px;color:var(--faint);font-variant-numeric:tabular-nums}
+.slot,.tile{width:clamp(34px,9vw,42px);height:clamp(40px,10.5vw,48px);display:grid;place-items:center;font:400 21px/1 Jost,sans-serif;padding:0;border-radius:0;-webkit-tap-highlight-color:transparent}
+.slot{background:transparent;border:0;border-bottom:1.5px solid var(--mid);color:var(--ink);cursor:pointer}
+.slot.over{background:rgba(196,48,43,.08);border-bottom-color:var(--red)}
+.slot.wrong .tile{color:var(--red);border-color:var(--red)}
+.tile{background:#fff;border:1.5px solid var(--mid);color:var(--ink);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.slot .tile{width:100%;height:100%;border-width:0 0 1.5px;background:rgba(255,255,255,.75)}
+.tile.sel{border-color:var(--red);color:var(--red);border-width:1.5px}
+.tile.lift{opacity:.25}
+.tile.new{animation:glow 1.8s ease-out}
+@keyframes glow{0%,35%{color:var(--red);border-color:var(--red)}}
+.ghost{position:fixed;z-index:9;pointer-events:none;box-shadow:0 8px 20px rgba(40,50,60,.18);transform:translate(-50%,-60%) rotate(-3deg)}
+.tile:focus-visible,.slot:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .check{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:30px}
 .btn{min-height:44px;padding:0 26px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font:400 16px Jost,sans-serif;letter-spacing:.02em;cursor:pointer;border-radius:0}
 .btn:hover:not(:disabled){background:var(--ink);color:#fff}
@@ -99,7 +108,7 @@ h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing
 .toast{position:fixed;left:50%;bottom:26px;z-index:6;transform:translate(-50%,12px);background:var(--paper);border:1px solid var(--light);padding:10px 18px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:nowrap}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media(max-width:600px){.wrap{padding-top:60px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.words{gap:12px 16px}.word{gap:5px}}
-@media(prefers-reduced-motion:reduce){.door.nudge,.cell input.new,.below input.bad{animation:none}.toast{transition:none}}
+@media(prefers-reduced-motion:reduce){.door.nudge,.tile.new,.below input.bad{animation:none}.toast{transition:none}}
 </style>
 </head>
 <body>
@@ -117,6 +126,8 @@ h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing
   <div id="cal">
   <div class="grid" id="grid"></div>
   <section class="sentence" aria-label="Lösungssatz">
+    <p class="pool-l">Deine Buchstaben</p>
+    <div class="pool" id="pool"></div>
     <div class="words" id="words"></div>
     <div class="check">
       <button class="btn" id="check" type="button" disabled>Prüfen</button>
@@ -202,7 +213,7 @@ const dayState = n => {
 };
 const canOpen = n => preview || dayState(n) !== 'future';
 
-const blank = () => ({answers:{}, letters:Array(TOTAL).fill('')});
+const blank = () => ({answers:{}, slots:Array(TOTAL).fill(0)});
 let state = blank(), user = null, uid = '', DAYS = {};
 const ls = {
   get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -210,7 +221,11 @@ const ls = {
   del: k => { try { localStorage.removeItem(k); } catch (e) {} }
 };
 const USERKEY = KEY + '-name';
-const valid = s => s && Array.isArray(s.letters) && s.letters.length === TOTAL && s.answers && typeof s.answers === 'object';
+const valid = s => {
+  if (!s || !s.answers || typeof s.answers !== 'object') return false;
+  if (!Array.isArray(s.slots) || s.slots.length !== TOTAL) s.slots = Array(TOTAL).fill(0);
+  delete s.letters; return true;
+};
 
 // Rätsel pro Person zufällig auf die Türen verteilen, immer gleich für denselben Namen
 const assign = id => {
@@ -266,34 +281,98 @@ else st = 'Alle Türen sind offen';
 $('status').textContent = st;
 if (preview) $('preview').classList.add('on');
 
-// Satz
-let pos = 0;
-$('words').innerHTML = WORDS.map(len => '<div class="word">' + Array.from({length: len}, () => {
-  pos++;
-  return `<label class="cell"><input id="b${pos}" data-i="${pos - 1}" maxlength="2" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Buchstabe ${pos}"><small>${pos}</small></label>`;
-}).join('') + '</div>').join('');
-const cells = [...document.querySelectorAll('.cell input')];
-const fill = () => { cells.forEach((c, i) => c.value = state.letters[i] || ''); updateCheck(); };
+// Satz: Buchstaben sammeln und in die Lücken ziehen
+const letterOf = n => firstLetter(state.answers[n] || '');
+let wrongSet = new Set(), selected = null, newTile = 0;
+$('words').innerHTML = (() => { let k = 0; return WORDS.map(len => '<div class="word">' + Array.from({length: len}, () => `<button type="button" class="slot" data-i="${k}" aria-label="Lücke ${++k}"></button>`).join('') + '</div>').join(''); })();
+const slotEls = [...document.querySelectorAll('.slot')];
+const tileHTML = n => `<span class="tile${selected === n ? ' sel' : ''}${newTile === n ? ' new' : ''}" role="button" tabindex="0" data-n="${n}" aria-label="Buchstabe ${letterOf(n)}">${letterOf(n)}</span>`;
+const render = () => {
+  const placed = new Set(state.slots.filter(Boolean));
+  const free = Object.keys(state.answers).map(Number).filter(n => !placed.has(n) && letterOf(n));
+  $('pool').innerHTML = free.length ? free.map(tileHTML).join('') : '<span class="empty">Hier sammeln sich deine Buchstaben.</span>';
+  slotEls.forEach((el, i) => {
+    const n = state.slots[i];
+    el.innerHTML = n ? tileHTML(n) : '';
+    el.classList.toggle('wrong', wrongSet.has(i));
+    el.setAttribute('aria-label', `Lücke ${i + 1}` + (n ? `: ${letterOf(n)}` : ''));
+  });
+  newTile = 0;
+  updateCheck();
+};
 const checkOpen = () => preview || now >= new Date(YEAR, 11, 24);
 const updateCheck = () => {
-  const full = state.letters.every(Boolean);
+  const full = state.slots.every(Boolean);
   $('check').disabled = !full || !checkOpen();
   $('msg').textContent = full && !checkOpen() ? 'Prüfen geht ab dem 24. Dezember.' : '';
 };
-cells.forEach((c, i) => {
-  c.addEventListener('input', () => {
-    const m = c.value.match(/\p{L}/gu);
-    const v = m ? up(m[m.length - 1]) : '';
-    c.value = v; state.letters[i] = v; c.classList.remove('wrong'); save(); updateCheck();
-    if (v && cells[i + 1]) cells[i + 1].focus();
-  });
-  c.addEventListener('keydown', e => {
-    if (e.key === 'Backspace' && !c.value && cells[i - 1]) { e.preventDefault(); cells[i - 1].focus(); }
-    if (e.key === 'ArrowLeft' && cells[i - 1]) cells[i - 1].focus();
-    if (e.key === 'ArrowRight' && cells[i + 1]) cells[i + 1].focus();
-  });
-  c.addEventListener('focus', () => c.select());
+const fill = render;
+// Buchstabe n in Lücke i legen (i = -1: zurück in den Pool)
+const place = (n, i) => {
+  const from = state.slots.indexOf(n);
+  if (i >= 0) {
+    const other = state.slots[i];
+    if (from >= 0) { state.slots[from] = other || 0; wrongSet.delete(from); }
+    state.slots[i] = n; wrongSet.delete(i);
+  } else if (from >= 0) { state.slots[from] = 0; wrongSet.delete(from); }
+  selected = null; save(); render();
+};
+// Antippen: erst Buchstabe, dann Lücke
+const tapTile = n => { selected = selected === n ? null : n; render(); };
+const tapSlot = i => {
+  if (selected) { place(selected, i); return; }
+  if (state.slots[i]) tapTile(state.slots[i]);
+};
+$('pool').addEventListener('click', e => {
+  if (dragged) return;
+  const t = e.target.closest('.tile');
+  if (t) tapTile(+t.dataset.n);
+  else if (selected && state.slots.includes(selected)) place(selected, -1);
 });
+$('words').addEventListener('click', e => {
+  if (dragged) return;
+  const sl = e.target.closest('.slot'); if (sl) tapSlot(+sl.dataset.i);
+});
+document.addEventListener('keydown', e => {
+  const t = e.target.closest && e.target.closest('.pool .tile');
+  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); tapTile(+t.dataset.n); }
+});
+// Ziehen mit Maus oder Finger
+let drag = null, dragged = false;
+const targetAt = (x, y) => { const el = document.elementFromPoint(x, y); return el ? (el.closest('.slot') || el.closest('.pool')) : null; };
+const clearOver = () => document.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
+document.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile'); if (!t || e.button > 0) return;
+  drag = {n: +t.dataset.n, el: t, x: e.clientX, y: e.clientY, ghost: null};
+  dragged = false;
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.ghost) {
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    const g = drag.el.cloneNode(true); g.classList.add('ghost'); g.classList.remove('sel', 'new');
+    const r = drag.el.getBoundingClientRect(); g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+    document.body.appendChild(g); drag.ghost = g; drag.el.classList.add('lift'); dragged = true;
+  }
+  drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+  const edge = 70;
+  if (e.clientY > innerHeight - edge) scrollBy(0, 12); else if (e.clientY < edge) scrollBy(0, -12);
+  clearOver(); const tg = targetAt(e.clientX, e.clientY); if (tg) tg.classList.add('over');
+  e.preventDefault();
+}, {passive: false});
+const endDrag = e => {
+  if (!drag) return;
+  const d = drag; drag = null; clearOver();
+  if (!d.ghost) return;
+  d.ghost.remove(); d.el.classList.remove('lift');
+  const tg = e.type === 'pointerup' ? targetAt(e.clientX, e.clientY) : null;
+  if (tg && tg.classList.contains('slot')) place(d.n, +tg.dataset.i);
+  else if (tg && tg.classList.contains('pool')) place(d.n, -1);
+  else render();
+  setTimeout(() => { dragged = false; }, 0);
+};
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
 
 // Anmelden
 const showCal = () => {
@@ -320,7 +399,7 @@ $('login').addEventListener('submit', e => {
 });
 $('logout').addEventListener('click', () => {
   ls.del(USERKEY); user = null; uid = ''; state = blank();
-  cells.forEach(c => c.classList.remove('wrong'));
+  wrongSet = new Set(); selected = null;
   $('cal').classList.remove('on'); $('who').classList.remove('on');
   $('uname').value = ''; $('login').classList.add('on'); $('uname').focus();
 });
@@ -404,11 +483,10 @@ below.addEventListener('submit', async e => {
     $('amsg').textContent = 'Leider falsch. Versuch’s nochmal.';
     return;
   }
-  const p = DAYS[cur].pos;
-  state.answers[cur] = w; state.letters[p - 1] = l; save(); fill();
+  const had = !!state.answers[cur];
+  state.answers[cur] = w; save();
   closeDoor();
-  const c = cells[p - 1]; c.classList.remove('wrong');
-  setTimeout(() => { c.classList.remove('new'); void c.offsetWidth; c.classList.add('new'); }, DUR);
+  setTimeout(() => { if (!had) newTile = cur; render(); }, DUR);
 });
 $('dclose').addEventListener('click', closeDoor);
 stage.addEventListener('click', e => { if (e.target === stage) closeDoor(); });
@@ -419,8 +497,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDoor(
 
 // Prüfen
 $('check').addEventListener('click', () => {
-  let wrong = 0;
-  cells.forEach((c, i) => { const bad = state.letters[i] !== SOL[i]; c.classList.toggle('wrong', bad); if (bad) wrong++; });
+  wrongSet = new Set(state.slots.map((n, i) => letterOf(n) === SOL[i] ? -1 : i).filter(i => i >= 0));
+  const wrong = wrongSet.size; render();
   if (!wrong) {
     let k = 0;
     const ws = WORDS.map(n => SOL.slice(k, k += n).join('').toLocaleLowerCase('de-DE'));
