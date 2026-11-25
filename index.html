@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adventsquizlender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* VOICE  hushed, minimal, a quiet winter morning
+   IDEA   a sheet of white paper with pencil-thin frames, snow falling behind it
+   PICTURE the 24 square frames, shuffled, then the sentence as blanks
+   COLOUR white with a faint blue at the top and faint grey at the bottom; light grey, dark grey, one red
+   TYPE   Jost light throughout
+   LAYOUT one centred column: small title, door grid, sentence blanks with the check button */
+:root{color-scheme:light;--ink:#2b2d31;--mid:#4a4d53;--light:#c9ccd1;--faint:#8d9198;--red:#c4302b;--paper:rgba(255,255,255,.86)}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;min-height:100%}
+body{background:linear-gradient(180deg,#f2f6fb 0%,#fbfcfd 45%,#f1f1f0 100%) fixed;color:var(--ink);font:300 16px/1.55 Jost,"Helvetica Neue",Arial,sans-serif;overflow-x:clip;min-height:100vh}
+#snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:660px;margin:0 auto;padding:clamp(36px,7vw,80px) 20px 56px}
+h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing:.12em;overflow-wrap:anywhere;margin:0 0 6px;text-align:center}
+#status{margin:0 0 clamp(28px,5vw,44px);text-align:center;color:var(--faint);font-size:15px}
+.preview{display:none;text-align:center;color:var(--faint);font-size:14px;margin:-24px 0 28px}
+.preview.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(10px,2.4vw,18px)}
+.door{aspect-ratio:1;background:transparent;border:1.5px solid var(--light);color:var(--light);font:300 clamp(20px,4vw,28px)/1 Jost,sans-serif;display:grid;place-items:center;cursor:pointer;padding:0;border-radius:0;transition:border-color .3s,color .3s,background .3s;-webkit-tap-highlight-color:transparent}
+.door.past{border-color:var(--mid);color:var(--mid)}
+.door.today{border-color:var(--red);color:var(--red)}
+.door.future{cursor:default}
+.door:not(.future):hover{background:rgba(255,255,255,.7)}
+.door:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.door.nudge{animation:nudge .35s}
+@keyframes nudge{30%{transform:translateX(-3px)}70%{transform:translateX(3px)}}
+.sentence{margin-top:clamp(44px,8vw,72px)}
+.words{display:flex;flex-wrap:wrap;justify-content:center;gap:14px 22px}
+.word{display:flex;gap:6px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cell input{width:clamp(28px,7vw,36px);height:clamp(36px,9vw,44px);border:0;border-bottom:1.5px solid var(--mid);background:transparent;text-align:center;font:400 20px Jost,sans-serif;color:var(--ink);text-transform:uppercase;padding:0;border-radius:0}
+.cell input:focus{outline:none;border-bottom-color:var(--red)}
+.cell input.wrong{color:var(--red);border-bottom-color:var(--red)}
+.cell input.new{animation:glow 1.8s ease-out}
+@keyframes glow{0%,35%{color:var(--red);border-bottom-color:var(--red)}}
+.cell small{font-size:13px;color:var(--faint);font-variant-numeric:tabular-nums}
+.check{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:30px}
+.btn{min-height:44px;padding:0 26px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font:400 16px Jost,sans-serif;letter-spacing:.02em;cursor:pointer;border-radius:0}
+.btn:hover:not(:disabled){background:var(--ink);color:#fff}
+.btn:disabled{border-color:var(--light);color:var(--light);cursor:default}
+.btn:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+#msg{min-height:1.5em;margin:0;color:var(--faint);font-size:15px}
+#who{position:fixed;top:14px;left:max(16px,2vw);z-index:2;display:none;align-items:baseline;gap:10px;font-size:15px;color:var(--mid)}
+#who.on{display:flex}
+#who button{border:0;background:none;padding:6px 0;font:300 13px Jost,sans-serif;color:var(--faint);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+#who button:hover{color:var(--ink)}
+#login{display:none;max-width:320px;margin:0 auto;text-align:center}
+#login.on{display:block}
+#login input{width:100%;height:50px;border:0;border-bottom:1.5px solid var(--mid);background:transparent;font:400 19px Jost,sans-serif;color:var(--ink);text-align:center;padding:0;border-radius:0}
+#login input:focus{outline:none;border-bottom-color:var(--red)}
+#login input::placeholder{color:var(--light)}
+#login .btn{margin-top:22px}
+#login p{margin:16px 0 0;font-size:14px;color:var(--faint)}
+#cal{display:none}
+#cal.on{display:block}
+.sample{text-align:center;color:var(--faint);font-size:13px;margin-top:48px}
+.sheet{position:fixed;inset:0;z-index:5;display:none;place-items:center;padding:20px;background:rgba(242,244,247,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.sheet.on{display:grid}
+.card{width:min(440px,100%);max-height:calc(100% - 8px);overflow:auto;background:var(--paper);border:1.5px solid var(--ink);padding:30px clamp(22px,5vw,36px) 26px}
+.stage{position:fixed;inset:0;z-index:5;display:none;perspective:1600px;background:rgba(242,244,247,0);transition:background .6s}
+.stage.on{display:block}
+.stage.lit{background:rgba(244,246,249,.92);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.flip{position:absolute;transform-style:preserve-3d;transition:left .8s,top .8s,width .8s,height .8s,transform .8s;transition-timing-function:cubic-bezier(.45,.05,.2,1)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.front{border:1.5px solid var(--mid);color:var(--mid);background:#fbfcfd;display:grid;place-items:center;font:300 28px/1 Jost,sans-serif}
+.front.today{border-color:var(--red);color:var(--red)}
+.back{transform:rotateY(180deg);background:#fff;border:1.5px solid var(--ink);overflow:hidden;box-shadow:0 18px 40px rgba(60,70,85,.12)}
+.back img{display:block;width:100%;height:100%;object-fit:cover}
+.ph{height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(20px,6%,34px);background:linear-gradient(180deg,#f4f7fa,#ecedee)}
+.ph b{font-weight:300;font-size:44px;line-height:1;color:var(--red)}
+.ph p{margin:0;font-size:clamp(17px,4.4vw,21px);line-height:1.4}
+.ph small{font-size:13px;color:var(--faint)}
+.below{position:absolute;opacity:0;transition:opacity .35s;pointer-events:none}
+.below.on{opacity:1;pointer-events:auto}
+.below input{width:100%;height:48px;border:0;border-bottom:1.5px solid var(--mid);background:transparent;font:400 19px Jost,sans-serif;color:var(--ink);text-align:center;padding:0;border-radius:0}
+.below input:focus{outline:none;border-bottom-color:var(--red)}
+.below input::placeholder{color:var(--light)}
+.x{position:absolute;top:10px;right:12px;width:44px;height:44px;border:0;background:transparent;color:var(--faint);font:300 30px/1 Jost,sans-serif;cursor:pointer;opacity:0;transition:opacity .35s}
+.stage.lit .x{opacity:1}
+.x:hover{color:var(--ink)}
+.x:focus-visible{outline:2px solid var(--ink)}
+.card.done{text-align:center}
+.card.done h2{font-weight:300;font-size:34px;line-height:1.1;margin:0 0 6px}
+.card.done p{margin:0 0 20px;color:var(--faint)}
+.video{aspect-ratio:16/9;border:1.5px solid var(--light);display:grid;place-items:center;color:var(--faint);font-size:15px;margin-bottom:22px}
+.toast{position:fixed;left:50%;bottom:26px;z-index:6;transform:translate(-50%,12px);background:var(--paper);border:1px solid var(--light);padding:10px 18px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:600px){.wrap{padding-top:60px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.words{gap:12px 16px}.word{gap:5px}}
+@media(prefers-reduced-motion:reduce){.door.nudge,.cell input.new{animation:none}.toast{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="snow" aria-hidden="true"></canvas>
+<div id="who"><span id="whoname"></span><button id="logout" type="button">abmelden</button></div>
+<main class="wrap">
+  <h1>ADVENTSQUIZLENDER</h1>
+  <p id="status">&nbsp;</p>
+  <p class="preview" id="preview">Vorschau, so sieht es am 10. Dezember aus. Alle Türen lassen sich öffnen.</p>
+  <form id="login">
+    <input id="uname" placeholder="Benutzername" aria-label="Benutzername" maxlength="30" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+    <button class="btn" type="submit">Weiter</button>
+    <p>Mit diesem Namen findest du deinen Kalender auch auf anderen Geräten wieder.</p>
+  </form>
+  <div id="cal">
+  <div class="grid" id="grid"></div>
+  <section class="sentence" aria-label="Lösungssatz">
+    <div class="words" id="words"></div>
+    <div class="check">
+      <button class="btn" id="check" type="button" disabled>Prüfen</button>
+      <p id="msg" role="status"></p>
+    </div>
+  </section>
+  <p class="sample">Die Rätsel sind Beispiele.</p>
+  </div>
+</main>
+
+<div class="stage" id="stage" role="dialog" aria-modal="true" aria-label="Rätsel">
+  <div class="flip" id="flip">
+    <div class="face front" id="ffront"></div>
+    <div class="face back" id="fback"></div>
+  </div>
+  <form class="below" id="below">
+    <input id="answer" placeholder="Lösungswort" aria-label="Lösungswort" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="enter">
+  </form>
+  <button class="x" id="dclose" type="button" aria-label="Schließen">×</button>
+</div>
+
+<div class="sheet" id="win" role="dialog" aria-modal="true" aria-labelledby="wt">
+  <div class="card done">
+    <h2 id="wt">Richtig</h2>
+    <p>Ist die Wiese weiss, bin ich ok.</p>
+    <div class="video">Hier kommt das Video</div>
+    <button class="btn" type="button" id="wclose">Schließen</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+{
+const YEAR = 2026;
+const WORDS = [3,3,5,5,3,3,2];
+const TOTAL = 24;
+const SOL = [108,99,111,2,24,25,48,59,56,91,86,73,108,125,108,25,23,41,37,63,66,68,88,105].map((c, i) => String.fromCharCode(c ^ ((37 + i * 11) & 127)));
+
+// Die 24 Rätsel. pos = Stelle im Satz (1 bis 24). img = Foto, z. B. 'bilder/biene.jpg'
+const RIDDLES = [
+  {pos:17,q:'Ich summe von Blüte zu Blüte und mache Honig.'},
+  {pos:5,q:'Ich trage meine Stacheln immer bei mir und verschlafe den Winter.'},
+  {pos:22,q:'Ich habe einen Kopf und einen Stiel. Mit mir schlägt man Nägel in die Wand.'},
+  {pos:9,q:'Ich bin kalt und durchsichtig und schmelze in deiner Hand.'},
+  {pos:2,q:'Ich falle leise vom Himmel und mache die Welt weiß.'},
+  {pos:14,q:'Rundherum Wasser, und mittendrin stehst du.'},
+  {pos:24,q:'Ich habe viele Zähne, aber ich beiße nie.'},
+  {pos:11,q:'Ich habe einen langen Rüssel und sehr große Ohren.'},
+  {pos:7,q:'Man sieht mich nicht, aber man hört mich in den Bäumen.'},
+  {pos:19,q:'Ich komme jeden Abend, wenn die Sonne geht.'},
+  {pos:3,q:'Ich bin das ganze Jahr grün und stehe im Dezember im Wohnzimmer.'},
+  {pos:16,q:'Ich wärme dich am Tag und gehe abends unter.'},
+  {pos:1,q:'Ich bin ein Haus aus Schnee.'},
+  {pos:21,q:'Ich bin ein großes Streichinstrument und stehe beim Spielen auf dem Boden.'},
+  {pos:13,q:'Ich bin ein weißes Häuschen ohne Tür, und drinnen liegt ein gelber Schatz.'},
+  {pos:8,q:'Ich bin eine scharfe Knolle und wärme dich im Tee.'},
+  {pos:23,q:'Ich bin eine Frucht und eine Farbe zugleich.'},
+  {pos:10,q:'Ich habe sechs Arme aus Eis, und keine von uns gleicht der anderen.'},
+  {pos:4,q:'Ich habe Flügel, speie Feuer und lebe nur in Geschichten.'},
+  {pos:18,q:'Ich kümmere mich um die Bienen und ernte ihren Honig.'},
+  {pos:12,q:'Ich habe graues Fell und heule nachts den Mond an.'},
+  {pos:15,q:'Ich habe Kufen und sause mit dir den Berg hinunter.'},
+  {pos:6,q:'Ich habe Federn, schwimme auf dem Teich und sage quak.'},
+  {pos:20,q:'Ich bin unsichtbar, und trotzdem hast du mich plötzlich im Kopf.'}
+];
+const ORDER = [14,3,21,8,1,17,10,23,5,12,19,7,2,16,24,11,6,20,9,13,22,4,18,15];
+
+// Datenbank (Supabase). Leer lassen = nur im Browser speichern.
+const DB_URL = 'https://opwtefvjwkucygmqfbrx.supabase.co';
+const DB_KEY = 'sb_publishable_3tXxmarnPW-zzRj6oQXhNg_79K7ra4K';
+
+const preview = location.hash === '#vorschau';
+const now = preview ? new Date(YEAR, 11, 10, 12) : new Date();
+const KEY = 'adventsquiz-' + YEAR + (preview ? '-vorschau' : '');
+const inDec = now.getFullYear() === YEAR && now.getMonth() === 11;
+const dayState = n => {
+  if (inDec && now.getDate() === n) return 'today';
+  if (now >= new Date(YEAR, 11, n)) return 'past';
+  return 'future';
+};
+const canOpen = n => preview || dayState(n) !== 'future';
+
+const blank = () => ({answers:{}, letters:Array(TOTAL).fill('')});
+let state = blank(), user = null, uid = '', DAYS = {};
+const ls = {
+  get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+  del: k => { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const USERKEY = KEY + '-name';
+const valid = s => s && Array.isArray(s.letters) && s.letters.length === TOTAL && s.answers && typeof s.answers === 'object';
+
+// Rätsel pro Person zufällig auf die Türen verteilen, immer gleich für denselben Namen
+const assign = id => {
+  let h = 2166136261;
+  for (const ch of id) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  let r = h % 2147483646 + 1;
+  const rand = () => (r = r * 16807 % 2147483647) / 2147483647;
+  const idx = RIDDLES.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  const d = {}; idx.forEach((ri, k) => d[k + 1] = RIDDLES[ri]); return d;
+};
+
+// Speichern: sofort im Browser, kurz danach in der Datenbank
+const remote = !!(DB_URL && DB_KEY);
+const dbName = () => uid + (preview ? '~vorschau' : '');
+const api = (q, o = {}) => fetch(DB_URL.replace(/\/$/, '') + '/rest/v1/progress' + q, {...o, headers: {apikey: DB_KEY, 'Content-Type': 'application/json', ...(o.headers || {})}});
+let pushT;
+const push = () => {
+  if (!remote || !uid) return;
+  clearTimeout(pushT);
+  const name = dbName(), data = JSON.parse(JSON.stringify(state));
+  pushT = setTimeout(() => {
+    api('', {method: 'POST', headers: {Prefer: 'resolution=merge-duplicates,return=minimal'}, body: JSON.stringify({name, data, updated_at: new Date().toISOString()})}).catch(() => {});
+  }, 600);
+};
+const pull = async () => {
+  if (!remote) return null;
+  try {
+    const r = await api('?select=data&name=eq.' + encodeURIComponent(dbName()));
+    if (!r.ok) return null;
+    const rows = await r.json();
+    return rows.length ? rows[0].data : 'none';
+  } catch (e) { return null; }
+};
+const save = () => { if (!uid) return; ls.set(KEY + '-u-' + uid, JSON.stringify(state)); push(); };
+
+const $ = id => document.getElementById(id);
+const up = c => c === 'ß' ? 'ß' : c.toLocaleUpperCase('de-DE');
+const firstLetter = w => { const m = w.trim().match(/\p{L}/u); return m ? up(m[0]) : ''; };
+
+// Türen
+const grid = $('grid');
+const renderDoors = () => {
+  grid.innerHTML = ORDER.map(n => `<button class="door ${dayState(n)}" type="button" data-n="${n}" aria-label="Tür ${n}">${n}</button>`).join('');
+};
+
+// Status
+const first = new Date(YEAR, 11, 1);
+let st;
+if (preview || inDec && now.getDate() <= 24) st = `Heute ist Tür ${now.getDate()} dran`;
+else if (now < first) { const d = Math.ceil((first - now) / 864e5); st = d === 1 ? 'Morgen öffnet sich die erste Tür' : `Noch ${d} Tage bis zur ersten Tür`; }
+else st = 'Alle Türen sind offen';
+$('status').textContent = st;
+if (preview) $('preview').classList.add('on');
+
+// Satz
+let pos = 0;
+$('words').innerHTML = WORDS.map(len => '<div class="word">' + Array.from({length: len}, () => {
+  pos++;
+  return `<label class="cell"><input id="b${pos}" data-i="${pos - 1}" maxlength="2" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Buchstabe ${pos}"><small>${pos}</small></label>`;
+}).join('') + '</div>').join('');
+const cells = [...document.querySelectorAll('.cell input')];
+const fill = () => { cells.forEach((c, i) => c.value = state.letters[i] || ''); updateCheck(); };
+const updateCheck = () => {
+  $('check').disabled = !state.letters.every(Boolean);
+  $('msg').textContent = '';
+};
+cells.forEach((c, i) => {
+  c.addEventListener('input', () => {
+    const m = c.value.match(/\p{L}/gu);
+    const v = m ? up(m[m.length - 1]) : '';
+    c.value = v; state.letters[i] = v; c.classList.remove('wrong'); save(); updateCheck();
+    if (v && cells[i + 1]) cells[i + 1].focus();
+  });
+  c.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !c.value && cells[i - 1]) { e.preventDefault(); cells[i - 1].focus(); }
+    if (e.key === 'ArrowLeft' && cells[i - 1]) cells[i - 1].focus();
+    if (e.key === 'ArrowRight' && cells[i + 1]) cells[i + 1].focus();
+  });
+  c.addEventListener('focus', () => c.select());
+});
+
+// Anmelden
+const showCal = () => {
+  $('login').classList.remove('on'); $('cal').classList.add('on');
+  $('whoname').textContent = user; $('who').classList.add('on');
+  renderDoors(); fill();
+};
+const login = async name => {
+  user = name; uid = name.toLocaleLowerCase('de-DE'); DAYS = assign(uid);
+  ls.set(USERKEY, name);
+  state = blank();
+  try { const c = JSON.parse(ls.get(KEY + '-u-' + uid)); if (valid(c)) state = c; } catch (e) {}
+  showCal();
+  const r = await pull();
+  if (uid !== name.toLocaleLowerCase('de-DE')) return;
+  if (r && r !== 'none' && valid(r)) { state = r; ls.set(KEY + '-u-' + uid, JSON.stringify(state)); fill(); }
+  else if (r === 'none') push();
+};
+$('login').addEventListener('submit', e => {
+  e.preventDefault();
+  const n = $('uname').value.trim().replace(/\s+/g, ' ');
+  if (!n) { $('uname').focus(); return; }
+  login(n);
+});
+$('logout').addEventListener('click', () => {
+  ls.del(USERKEY); user = null; uid = ''; state = blank();
+  cells.forEach(c => c.classList.remove('wrong'));
+  $('cal').classList.remove('on'); $('who').classList.remove('on');
+  $('uname').value = ''; $('login').classList.add('on'); $('uname').focus();
+});
+const saved = ls.get(USERKEY);
+if (saved) login(saved); else $('login').classList.add('on');
+
+// Toast
+let tt;
+const toast = t => { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2200); };
+
+// Türkarte: dreht sich aus der Tür heraus und wird groß
+const RATIO = 5 / 4; // Höhe zu Breite der Fotos (4:5 Hochformat)
+const DUR = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 800;
+const stage = $('stage'), flip = $('flip'), below = $('below');
+let cur = 0, curBtn = null, lastFocus = null, busy = false;
+const setRect = (el, r) => { el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.width = r.width + 'px'; if (r.height != null) el.style.height = r.height + 'px'; };
+const target = () => {
+  let w = Math.min(420, innerWidth - 40), h = w * RATIO;
+  const avail = innerHeight - 160;
+  if (h > avail) { h = Math.max(220, avail); w = h / RATIO; }
+  const top = Math.max(20, (innerHeight - h - 100) / 2);
+  return {left: (innerWidth - w) / 2, top, width: w, height: h};
+};
+const placeBelow = t => setRect(below, {left: t.left, top: t.top + t.height + 16, width: t.width});
+const openDoor = (n, b) => {
+  if (busy) return; busy = true;
+  cur = n; curBtn = b; const d = DAYS[n];
+  const f = $('ffront');
+  f.textContent = n; f.className = 'face front' + (dayState(n) === 'today' ? ' today' : '');
+  f.style.fontSize = getComputedStyle(b).fontSize;
+  $('fback').innerHTML = d.img
+    ? `<img src="${d.img}" alt="Rätsel ${n}">`
+    : `<div class="ph"><b>${n}</b><p>${d.q}</p><small>Platzhalter für dein Foto</small></div>`;
+  $('answer').value = state.answers[n] || '';
+  flip.style.transition = 'none';
+  setRect(flip, b.getBoundingClientRect());
+  flip.style.transform = 'rotateY(0deg)';
+  stage.classList.add('on');
+  void flip.offsetWidth;
+  flip.style.transition = DUR ? '' : 'none';
+  b.style.visibility = 'hidden';
+  requestAnimationFrame(() => {
+    stage.classList.add('lit');
+    const t = target(); setRect(flip, t); placeBelow(t);
+    flip.style.transform = 'rotateY(180deg)';
+    setTimeout(() => { below.classList.add('on'); $('answer').focus({preventScroll: true}); busy = false; }, DUR);
+  });
+};
+const closeDoor = () => {
+  if (busy || !stage.classList.contains('on')) return; busy = true;
+  below.classList.remove('on'); $('answer').blur();
+  stage.classList.remove('lit');
+  setRect(flip, curBtn.getBoundingClientRect());
+  flip.style.transform = 'rotateY(0deg)';
+  setTimeout(() => { stage.classList.remove('on'); curBtn.style.visibility = ''; curBtn.focus({preventScroll: true}); busy = false; }, DUR);
+};
+addEventListener('resize', () => { if (stage.classList.contains('lit')) { const t = target(); flip.style.transition = 'none'; setRect(flip, t); placeBelow(t); void flip.offsetWidth; flip.style.transition = DUR ? '' : 'none'; } });
+grid.addEventListener('click', e => {
+  const b = e.target.closest('.door'); if (!b) return;
+  const n = +b.dataset.n;
+  if (!canOpen(n)) { b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); toast(`Tür ${n} öffnet sich am ${n}. Dezember`); return; }
+  openDoor(n, b);
+});
+below.addEventListener('submit', e => {
+  e.preventDefault();
+  const w = $('answer').value.trim();
+  const l = firstLetter(w);
+  if (!l) return;
+  const p = DAYS[cur].pos;
+  state.answers[cur] = w; state.letters[p - 1] = l; save(); fill();
+  closeDoor();
+  const c = cells[p - 1]; c.classList.remove('wrong');
+  setTimeout(() => { c.classList.remove('new'); void c.offsetWidth; c.classList.add('new'); }, DUR);
+});
+$('dclose').addEventListener('click', closeDoor);
+stage.addEventListener('click', e => { if (e.target === stage) closeDoor(); });
+const closeWin = () => { $('win').classList.remove('on'); if (lastFocus) lastFocus.focus(); };
+$('wclose').addEventListener('click', closeWin);
+$('win').addEventListener('click', e => { if (e.target.id === 'win') closeWin(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDoor(); closeWin(); } });
+
+// Prüfen
+$('check').addEventListener('click', () => {
+  let wrong = 0;
+  cells.forEach((c, i) => { const bad = state.letters[i] !== SOL[i]; c.classList.toggle('wrong', bad); if (bad) wrong++; });
+  if (!wrong) { lastFocus = $('check'); $('win').classList.add('on'); $('wclose').focus(); }
+  else $('msg').textContent = wrong === 1 ? 'Ein Buchstabe stimmt noch nicht.' : `${wrong} Buchstaben stimmen noch nicht.`;
+});
+
+// Schnee
+const cv = $('snow'), cx = cv.getContext('2d');
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W = 0, H = 0, flakes = [], seed = 4711;
+const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+const size = () => {
+  const r = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight; cv.width = W * r; cv.height = H * r; cx.setTransform(r, 0, 0, r, 0, 0);
+  const n = Math.round(Math.min(60, W * H / 22000));
+  while (flakes.length < n) flakes.push({x: rnd() * W, y: rnd() * H, r: .8 + rnd() * 1.8, v: .15 + rnd() * .35, ph: rnd() * 6.3, a: .25 + rnd() * .4});
+  flakes.length = n;
+};
+const draw = t => {
+  cx.clearRect(0, 0, W, H);
+  for (const f of flakes) {
+    if (!still) { f.y += f.v; f.x += Math.sin(t / 3000 + f.ph) * .15; if (f.y > H + 4) { f.y = -4; f.x = rnd() * W; } }
+    cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, 6.283); cx.fillStyle = `rgba(150,162,178,${f.a})`; cx.fill();
+  }
+};
+const loop = t => { draw(t); if (!still) requestAnimationFrame(loop); };
+addEventListener('resize', () => { size(); if (still) draw(0); });
+size(); requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
