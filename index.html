@@ -34,7 +34,8 @@ h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing
 .door.nudge{animation:nudge .35s}
 @keyframes nudge{30%{transform:translateX(-3px)}70%{transform:translateX(3px)}}
 .sentence{margin-top:clamp(44px,8vw,72px)}
-.pool-l{margin:0 0 10px;text-align:center;font-size:14px;color:var(--faint)}
+.pool-l{margin:0;text-align:center;font-size:16px;color:var(--mid)}
+.pool-h{margin:2px auto 12px;max-width:34em;text-align:center;font-size:14px;line-height:1.45;color:var(--faint);text-wrap:balance}
 .pool{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;min-height:56px;padding:10px;border:1.5px dashed var(--light);margin-bottom:clamp(28px,5vw,40px)}
 .pool.over{border-color:var(--mid);background:rgba(255,255,255,.6)}
 .pool .empty{align-self:center;color:var(--light);font-size:15px}
@@ -127,6 +128,7 @@ h1{font-weight:300;font-size:clamp(22px,5vw,34px);line-height:1.1;letter-spacing
   <div class="grid" id="grid"></div>
   <section class="sentence" aria-label="Lösungssatz">
     <p class="pool-l">Deine Buchstaben</p>
+    <p class="pool-h">Zieh die Buchstaben in die Lücken unten. Oder tipp erst einen Buchstaben und dann eine Lücke an.</p>
     <div class="pool" id="pool"></div>
     <div class="words" id="words"></div>
     <div class="check">
@@ -290,7 +292,7 @@ const tileHTML = n => `<span class="tile${selected === n ? ' sel' : ''}${newTile
 const render = () => {
   const placed = new Set(state.slots.filter(Boolean));
   const free = Object.keys(state.answers).map(Number).filter(n => !placed.has(n) && letterOf(n));
-  $('pool').innerHTML = free.length ? free.map(tileHTML).join('') : '<span class="empty">Hier sammeln sich deine Buchstaben.</span>';
+  $('pool').innerHTML = free.length ? free.map(tileHTML).join('') : '<span class="empty">Für jede richtige Antwort landet hier ein Buchstabe.</span>';
   slotEls.forEach((el, i) => {
     const n = state.slots[i];
     el.innerHTML = n ? tileHTML(n) : '';
