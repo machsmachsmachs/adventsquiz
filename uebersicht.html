@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Adventsquizlender Übersicht</title>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2b2d31;--mid:#4a4d53;--light:#c9ccd1;--faint:#8d9198;--red:#c4302b}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:linear-gradient(180deg,#f2f6fb,#fbfcfd 45%,#f1f1f0) fixed;color:var(--ink);font:300 16px/1.5 Jost,"Helvetica Neue",Arial,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:clamp(28px,5vw,56px) 16px 56px}
+h1{font-weight:300;font-size:clamp(22px,4vw,30px);letter-spacing:.12em;margin:0 0 4px}
+h2{font-weight:400;font-size:19px;margin:40px 0 12px}
+.sub{color:var(--faint);margin:0 0 20px;font-size:15px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin-bottom:18px;font-size:15px;color:var(--mid)}
+.bar label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.bar button{min-height:40px;padding:0 18px;border:1.5px solid var(--ink);background:transparent;font:400 15px Jost,sans-serif;cursor:pointer}
+.bar button:hover{background:var(--ink);color:#fff}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(10em,1fr));gap:12px;margin-bottom:26px}
+.fig{border:1.5px solid var(--light);background:rgba(255,255,255,.7);padding:12px 14px}
+.fig b{display:block;font:300 34px/1.1 Jost,sans-serif}
+.fig span{font-size:14px;color:var(--faint)}
+.scroll{overflow-x:auto;border:1.5px solid var(--light);background:rgba(255,255,255,.75)}
+table{border-collapse:collapse;font-size:14px;width:100%}
+th,td{padding:7px 6px;text-align:center;border-bottom:1px solid #e6e8eb;white-space:nowrap}
+th{font-weight:400;color:var(--faint);position:sticky;top:0;background:#fafbfc}
+td.n,th.n{text-align:left;position:sticky;left:0;background:#fff;font-weight:400;padding-left:12px;z-index:1}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.c{display:inline-grid;place-items:center;width:26px;height:26px;font-size:12px;border:1.5px solid transparent;cursor:default}
+.c.o{border-color:var(--light);color:var(--faint)}
+.c.s{background:var(--ink);color:#fff;border-color:var(--ink)}
+.c.w{color:var(--red)}
+.c.s.w{color:#fff;background:var(--mid)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:14px;color:var(--faint);margin:12px 0 0}
+.legend span{display:flex;gap:8px;align-items:center}
+.rows{display:grid;gap:6px}
+.rrow{display:grid;grid-template-columns:2.2em minmax(0,15em) minmax(0,1fr) 7.5em;gap:12px;align-items:center;font-size:14px}
+.rrow .t{color:var(--mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{height:12px;background:#e9ebee;position:relative}
+.track i{position:absolute;inset:0 auto 0 0;background:var(--ink)}
+.rrow .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--faint);white-space:nowrap}
+.rrow .k{color:var(--faint);font-variant-numeric:tabular-nums}
+#err{color:var(--red)}
+.empty{padding:20px;color:var(--faint)}
+@media(max-width:600px){.rrow{grid-template-columns:2em minmax(0,1fr) 6.5em}.rrow .track{grid-column:2/4}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>ÜBERSICHT</h1>
+  <p class="sub">Wer was geöffnet und gelöst hat. Diese Seite ist nirgends verlinkt.</p>
+  <div class="bar">
+    <button id="reload" type="button">Neu laden</button>
+    <label><input type="checkbox" id="tests"> Vorschau-Tests zeigen</label>
+    <span id="stamp"></span> <span id="err"></span>
+  </div>
+  <div class="figs" id="figs"></div>
+  <div class="scroll"><table id="tbl"></table></div>
+  <div class="legend">
+    <span><i class="c o">·</i> geöffnet, nicht gelöst</span>
+    <span><i class="c s">✓</i> gelöst</span>
+    <span><i class="c o w">2</i> Zahl = falsche Versuche</span>
+    <span>Antippen oder drüberfahren zeigt die Zeiten</span>
+  </div>
+  <h2>Welche Rätsel sind am schwersten?</h2>
+  <p class="sub">Balken = Anteil der Leute, die das Rätsel geöffnet und gelöst haben. Nummern wie in deiner Fotoliste.</p>
+  <div class="rows" id="rows"></div>
+</main>
+<script>
+{
+const DB_URL = 'https://opwtefvjwkucygmqfbrx.supabase.co', DB_KEY = 'sb_publishable_3tXxmarnPW-zzRj6oQXhNg_79K7ra4K';
+const LABELS = ["Ich bin eine Wurst …", "Ich bin stachelig, schlafe …", "Ich rede 275 Wörter …", "Ich bin ein Pferd …", "Ich verschwinde in der …", "Rundherum Wasser, mittendrin du …", "Ich komme aus Neukölln …", "Aus mir kommen Räuchermännchen …", "Alles hat ein Ende …", "Ich laufe, obwohl ich …", "Ich bin ein Kuchen …", "Ich habe ein Haus …", "Ich bin ein schwedisches …", "Ich bin Komikerin aus …", "Ich kann genau ein …", "Ich bin ein Land …", "Ich stricke dir Socken …", "Ich habe eine Karotte …", "Ich werde jedes Jahr …", "Ich bin eine Glühbirne …", "Ich schreie dich jeden …", "Das bist du nie …", "Ich bin kalt und …", "Ich bin ein Garten …"];
+const N = 24, SOL_LEN = 24;
+const $ = id => document.getElementById(id);
+// gleiche Zuteilung wie im Kalender
+const assign = id => {
+  let h = 2166136261;
+  for (const ch of id) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  let r = h % 2147483646 + 1;
+  const rand = () => (r = r * 16807 % 2147483647) / 2147483647;
+  const idx = Array.from({length: N}, (_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  const d = {}; idx.forEach((ri, k) => d[k + 1] = ri); return d;
+};
+const esc = t => String(t).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const fmt = iso => iso ? new Date(iso).toLocaleString('de-DE', {day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+let rows = [];
+const draw = () => {
+  const show = $('tests').checked;
+  const users = rows.filter(r => show || !r.name.includes('~')).map(r => {
+    const d = r.data || {}, log = d.log || {}, ans = d.answers || {}, map = assign(r.name.replace(/~vorschau$/, ''));
+    const doors = {};
+    for (let n = 1; n <= N; n++) {
+      const l = log[n] || {}; const solved = !!(l.s || ans[n]);
+      if (l.o || solved) doors[n] = {o: l.o, s: l.s || (solved ? '?' : ''), w: l.w || 0, riddle: map[n] + 1};
+    }
+    const solved = Object.values(doors).filter(x => x.s).length;
+    const placed = (d.slots || []).filter(Boolean).length;
+    return {name: r.name, at: r.updated_at, doors, solved, opened: Object.keys(doors).length, placed};
+  }).sort((a, b) => b.solved - a.solved || b.opened - a.opened || a.name.localeCompare(b.name));
+
+  const tot = users.reduce((a, u) => a + u.solved, 0);
+  const active = users.filter(u => u.opened).length;
+  const wrong = users.reduce((a, u) => a + Object.values(u.doors).reduce((x, y) => x + y.w, 0), 0);
+  $('figs').innerHTML = [[users.length, 'angemeldet'], [active, 'haben schon Türen geöffnet'], [tot, 'Rätsel gelöst, alle zusammen'], [wrong, 'falsche Versuche']]
+    .map(([v, l]) => `<div class="fig"><b>${v}</b><span>${l}</span></div>`).join('');
+
+  if (!users.length) { $('tbl').innerHTML = '<tr><td class="empty">Noch niemand da.</td></tr>'; }
+  else {
+    const head = '<tr><th class="n">Name</th>' + Array.from({length: N}, (_, i) => `<th>${i + 1}</th>`).join('') + '<th class="r">gelöst</th><th class="r">im Satz</th><th class="r">zuletzt aktiv</th></tr>';
+    const body = users.map(u => '<tr><td class="n">' + esc(u.name) + '</td>' + Array.from({length: N}, (_, i) => {
+      const x = u.doors[i + 1]; if (!x) return '<td></td>';
+      const tip = `Tür ${i + 1}, Rätsel ${x.riddle}` + (x.o ? `\ngeöffnet ${fmt(x.o)}` : '') + (x.w ? `\n${x.w} falsche${x.w === 1 ? 'r' : ''} Versuch${x.w === 1 ? '' : 'e'}` : '') + (x.s ? `\ngelöst ${x.s === '?' ? '' : fmt(x.s)}` : '');
+      const cls = 'c' + (x.s ? ' s' : ' o') + (x.w ? ' w' : '');
+      return `<td><i class="${cls}" title="${esc(tip)}">${x.w ? x.w : (x.s ? '✓' : '·')}</i></td>`;
+    }).join('') + `<td class="r">${u.solved}</td><td class="r">${u.placed}/${SOL_LEN}</td><td class="r">${fmt(u.at)}</td></tr>`).join('');
+    $('tbl').innerHTML = '<thead>' + head + '</thead><tbody>' + body + '</tbody>';
+  }
+
+  const stat = LABELS.map((t, i) => ({i, t, open: 0, solved: 0, wrong: 0}));
+  users.forEach(u => Object.values(u.doors).forEach(x => { const s = stat[x.riddle - 1]; s.open++; if (x.s) s.solved++; s.wrong += x.w; }));
+  stat.sort((a, b) => (a.open ? a.solved / a.open : 2) - (b.open ? b.solved / b.open : 2) || b.wrong - a.wrong || a.i - b.i);
+  $('rows').innerHTML = stat.map(s => `<div class="rrow"><span class="k">${s.i + 1}</span><span class="t">${esc(s.t)}</span><span class="track"><i style="width:${s.open ? Math.round(s.solved / s.open * 100) : 0}%"></i></span><span class="v">${s.open ? `${s.solved}/${s.open} · ${s.wrong} falsch` : 'noch offen'}</span></div>`).join('');
+};
+// Antippen zeigt die Zeiten auf dem Handy
+document.addEventListener('click', e => { const c = e.target.closest('.c[title]'); if (c && matchMedia('(hover: none)').matches) alert(c.title); });
+const load = async () => {
+  $('err').textContent = '';
+  try {
+    const r = await fetch(DB_URL + '/rest/v1/progress?select=name,data,updated_at', {headers: {apikey: DB_KEY}});
+    if (!r.ok) throw new Error(r.status);
+    rows = await r.json();
+    $('stamp').textContent = 'Stand ' + new Date().toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+    draw();
+  } catch (e) { $('err').textContent = 'Daten konnten nicht geladen werden.'; }
+};
+$('reload').addEventListener('click', load);
+$('tests').addEventListener('change', draw);
+load();
+setInterval(load, 60000);
+}
+</script>
+</body>
+</html>

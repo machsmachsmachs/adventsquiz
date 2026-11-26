@@ -247,7 +247,7 @@ const dayState = n => {
 };
 const canOpen = n => preview || dayState(n) !== 'future';
 
-const blank = () => ({answers:{}, slots:Array(TOTAL).fill(0)});
+const blank = () => ({answers:{}, slots:Array(TOTAL).fill(0), log:{}});
 let state = blank(), user = null, uid = '', DAYS = {};
 const ls = {
   get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -258,6 +258,7 @@ const USERKEY = KEY + '-name';
 const valid = s => {
   if (!s || !s.answers || typeof s.answers !== 'object') return false;
   if (!Array.isArray(s.slots) || s.slots.length !== TOTAL) s.slots = Array(TOTAL).fill(0);
+  if (!s.log || typeof s.log !== 'object') s.log = {};
   delete s.letters; return true;
 };
 
@@ -461,6 +462,9 @@ const placeBelow = t => setRect(below, {left: t.left, top: t.top + t.height + 16
 const openDoor = (n, b) => {
   if (busy) return; busy = true;
   cur = n; curBtn = b; const d = DAYS[n];
+  // Tracking: wann zuerst geöffnet
+  if (!state.log) state.log = {};
+  if (!state.log[n]) { state.log[n] = {o: new Date().toISOString(), w: 0}; save(); }
   const f = $('ffront');
   f.textContent = n; f.className = 'face front' + (dayState(n) === 'today' ? ' today' : '');
   f.style.fontSize = getComputedStyle(b).fontSize;
@@ -514,11 +518,14 @@ below.addEventListener('submit', async e => {
   checking = false;
   if (!right) {
     const a = $('answer'); a.classList.remove('bad'); void a.offsetWidth; a.classList.add('bad');
+    const lg = state.log[cur] || (state.log[cur] = {o: new Date().toISOString(), w: 0}); lg.w = (lg.w || 0) + 1; save();
     $('amsg').textContent = 'Leider falsch. Versuch’s nochmal.';
     return;
   }
   const had = !!state.answers[cur];
-  state.answers[cur] = w; save();
+  state.answers[cur] = w;
+  const lg = state.log[cur] || (state.log[cur] = {o: new Date().toISOString(), w: 0}); if (!lg.s) lg.s = new Date().toISOString();
+  save();
   closeDoor();
   setTimeout(() => { if (!had) newTile = cur; render(); }, DUR);
 });
